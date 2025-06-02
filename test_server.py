@@ -92,7 +92,7 @@ class CerebriumTester:
             result = resp.json()
             result.update({'inference_time': duration, 'image_path': path})
             
-            logger.info(f"✓ Success in {duration:.3f}s")
+            logger.info(f" Success in {duration:.3f}s")
             if 'result' in result and 'predicted_class' in result['result']:
                 cls = result['result']['predicted_class']
                 conf = result['result'].get('confidence', 0)
@@ -152,7 +152,7 @@ class CerebriumTester:
                 'status': 'success'
             }
             
-            logger.info(f"✓ Benchmark complete: {results['success_rate']:.1f}% success, avg {avg:.3f}s")
+            logger.info(f" Benchmark complete: {results['success_rate']:.1f}% success, avg {avg:.3f}s")
             return results
         else:
             return {
@@ -218,7 +218,7 @@ class CerebriumTester:
                     passed += 1
         
         results['summary'] = {'total': total, 'passed': passed, 'rate': passed / total * 100 if total else 0}
-        logger.info(f"\n✓ {passed}/{total} tests passed ({results['summary']['rate']:.1f}%)")
+        logger.info(f"\n {passed}/{total} tests passed ({results['summary']['rate']:.1f}%)")
         return results
 
 

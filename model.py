@@ -162,7 +162,7 @@ class ONNXModelLoader:
             self.input_shape = self.session.get_inputs()[0].shape
             self.output_shape = self.session.get_outputs()[0].shape
             
-            logger.info(f"Model loaded successfully!")
+            logger.info("Model loaded successfully!")
             logger.info(f"Input: {self.input_name} - Shape: {self.input_shape}")
             logger.info(f"Output: {self.output_name} - Shape: {self.output_shape}")
             logger.info(f"Execution providers: {self.session.get_providers()}")
