@@ -202,7 +202,7 @@ MODEL_URL = "https://api.cortex.cerebrium.ai/v2/p-d44d3bb7/imagenet-classifier/p
 python test_server.py --run_tests
 ```
 
-## 🧪 Testing & Validation
+## Testing & Validation
 
 ### Local Testing
 ```bash
