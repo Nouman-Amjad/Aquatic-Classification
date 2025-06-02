@@ -5,6 +5,7 @@ import torch.nn as nn
 
 from torch import Tensor
 import numpy as np
+import os
 
 from torchvision import transforms
 
@@ -149,7 +150,7 @@ class Bottleneck(nn.Module):
         return out
 
 
-class Classifier(nn.Module):
+class ImageNetClassifier(nn.Module): 
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]] = BasicBlock,
@@ -298,25 +299,135 @@ class Classifier(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
 
-    def preprocess_numpy(self, img):
-        resize = transforms.Resize((224, 224))   #must same as here
+    def preprocess_numpy(self, image_path): # Changed this method to follow the test guidelines
+        """
+        Preprocess an image for model inference using torchvision transforms.
+        
+        Args:
+            image_path (str): Path to the image file
+            
+        Returns:
+            torch.Tensor: Preprocessed image tensor ready for model input
+        """
+        # Load image
+        img = Image.open(image_path)
+        
+        # Convert to RGB if needed
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # Define transforms (same as in the original code)
+        resize = transforms.Resize((224, 224))   # must same as here
         crop = transforms.CenterCrop((224, 224))
         to_tensor = transforms.ToTensor()
         normalize = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        
+        # Apply transforms
         img = resize(img)
         img = crop(img)
         img = to_tensor(img)
         img = normalize(img)
+        
         return img
 
 
-if __name__ == "__main__":
-    mtailor = Classifier(BasicBlock, [2, 2, 2, 2])
-    mtailor.load_state_dict(torch.load("./resnet18-f37072fd.pth"))
-    mtailor.eval()
+def load_model(weights_path='pytorch_model_weights.pth'):  # added this method to follow the test requirements
+    """
+    Load the trained ResNet-18 model with weights.
     
-    img = Image.open("./n01667114_mud_turtle.JPEG")
-    inp = mtailor.preprocess_numpy(img).unsqueeze(0) 
-    res = mtailor.forward(inp)
+    Args:
+        weights_path (str): Path to the model weights file
+        
+    Returns:
+        ImageNetClassifier: Loaded model ready for inference
+    """
+    # Create ResNet-18 model
+    model = ImageNetClassifier(BasicBlock, [2, 2, 2, 2])
+    model.load_state_dict(torch.load(weights_path, map_location='cpu'))
+    model.eval()
+    return model
 
-    print(torch.argmax(res))
+
+def predict_image(model, image_path):
+    """
+    Predict the class of an image using the ResNet-18 model.
+    
+    Args:
+        model: Loaded PyTorch model
+        image_path (str): Path to the image file
+        
+    Returns:
+        tuple: (class_id, probabilities)
+    """
+    with torch.no_grad():
+        # Preprocess image
+        input_tensor = model.preprocess_numpy(image_path).unsqueeze(0)
+        
+        # Get prediction
+        outputs = model(input_tensor)
+        probabilities = torch.nn.functional.softmax(outputs, dim=1)
+        
+        # Get predicted class
+        predicted_class = torch.argmax(probabilities, dim=1).item()
+        
+        return predicted_class, probabilities.squeeze().numpy()
+
+
+if __name__ == "__main__":
+    # Example usage matching the provided code structure
+    print("Loading ResNet-18 model...")
+    
+    # Try multiple possible weight file names
+    weight_files = [
+        'pytorch_model_weights.pth',
+        'resnet18-f37072fd.pth'
+    ]
+    
+    model = None
+    for weight_file in weight_files:
+        try:
+            model = load_model(weight_file)
+            print(f"Successfully loaded weights from {weight_file}")
+            break
+        except FileNotFoundError:
+            print(f"Weight file not found: {weight_file}")
+        except Exception as e:
+            print(f"Error loading {weight_file}: {e}")
+    
+    if model is None:
+        print("Could not load any model weights. Please ensure weight files are available.")
+        exit(1)
+    
+    # Test with sample images if they exist
+    test_images = [
+        'test_images/n01440764_tench.jpg',  # Class 0
+        'test_images/n01667114_mud_turtle.jpg',  # Class 35
+        'n01667114_mud_turtle.JPEG'  # Alternative naming
+    ]
+    
+    for image_path in test_images:
+        if not os.path.exists(image_path):
+            continue
+            
+        try:
+            class_id, probabilities = predict_image(model, image_path)
+            confidence = probabilities[class_id]
+            print(f"Image: {image_path}")
+            print(f"Predicted class: {class_id}")
+            print(f"Confidence: {confidence:.4f}")
+            print("-" * 50)
+        except Exception as e:
+            print(f"Error processing {image_path}: {e}")
+    
+    # If no test images found, create a dummy test
+    if not any(os.path.exists(img) for img in test_images):
+        print("No test images found. Creating dummy test...")
+        try:
+            # Create a dummy image for testing
+            dummy_image = torch.randn(1, 3, 224, 224)
+            with torch.no_grad():
+                outputs = model(dummy_image)
+                predicted_class = torch.argmax(outputs).item()
+                print(f"Dummy input predicted class: {predicted_class}")
+        except Exception as e:
+            print(f"Error with dummy test: {e}") 
